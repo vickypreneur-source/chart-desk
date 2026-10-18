@@ -350,7 +350,7 @@ function rebuild(){
   candles=main.addCandlestickSeries({upColor:css("--up"),downColor:css("--down"),wickUpColor:css("--up"),wickDownColor:css("--down"),borderVisible:false,priceFormat:pf()});
   const leg=[];
   const sessSer=main.addHistogramSeries({priceScaleId:"sess",priceLineVisible:false,lastValueVisible:false,base:0});
-  main.priceScale("sess").applyOptions({scaleMargins:{top:0,bottom:0},visible:false});
+  main.priceScale("sess").applyOptions({scaleMargins:{top:0.965,bottom:0},visible:false});
   if(S.showSess&&S.tf!=="D1"){SESS.forEach(x=>leg.push([x.c,"Sesi "+x.n]))}
   plots.push(()=>{sessSer.setData(S.showSess&&S.tf!=="D1"?data.map(c=>{const x=sessOf(c.t);return x?{time:c.t+WIB,value:1,color:x.bg}:{time:c.t+WIB}}):[])});
   const ov=(k,label,calc)=>{const c=css(META[k].color),s=line(main,c,2);leg.push([c,label]);
@@ -412,7 +412,7 @@ function summary(){
 }
 
 /* ---------- sesi pasar (jam WIB, perkiraan) ---------- */
-const SESS=[{n:"Asia",a:5,b:14,c:"#6ea2ff",bg:"rgba(110,162,255,.10)"},{n:"Eropa",a:14,b:19,c:"#e3b44c",bg:"rgba(227,180,76,.12)"},{n:"Amerika",a:19,b:28,c:"#4cc488",bg:"rgba(76,196,136,.10)"}];
+const SESS=[{n:"Asia",a:5,b:14,c:"#6ea2ff",bg:"rgba(110,162,255,.85)"},{n:"Eropa",a:14,b:19,c:"#e3b44c",bg:"rgba(227,180,76,.9)"},{n:"Amerika",a:19,b:28,c:"#4cc488",bg:"rgba(76,196,136,.85)"}];
 function sessOf(tUtc){let h=new Date((tUtc+WIB)*1000).getUTCHours();if(h<5)h+=24;return SESS.find(x=>h>=x.a&&h<x.b)||null}
 function sessChip(){
   const now=Date.now()/1000,d=new Date((now+WIB)*1000),dow=d.getUTCDay(),h=d.getUTCHours()+d.getUTCMinutes()/60;
