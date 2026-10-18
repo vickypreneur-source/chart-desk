@@ -166,10 +166,11 @@ h2{font-family:var(--display);font-weight:600;font-size:16px;margin:0}
 
   <section class="panel" aria-labelledby="h-pro">
     <div class="pro-head"><h2 id="h-pro">Pro</h2><span class="badge">PRO</span></div>
+    <p class="hint" id="trialInfo" hidden></p>
     <div id="proList"></div>
     <div class="cta" id="cta">
       <p><b>Buka 5 indikator Pro</b>: indikator adaptif dan ADX Wilder yang biasanya hanya bisa dipakai di MT5 desktop.</p>
-      <div class="row"><button class="btn" type="button" id="sub">Langganan Pro · Rp49.000/bulan</button><button class="btn ghost" type="button" id="trial">Coba gratis (demo)</button></div>
+      <div class="row"><button class="btn" type="button" id="sub">Langganan Pro · Rp49.000/bulan</button><button class="btn ghost" type="button" id="trial">Coba gratis 3 hari</button></div>
       <small class="muted" id="subNote" hidden>Prototipe: tombol langganan belum terhubung ke pembayaran.</small>
     </div>
   </section>
@@ -194,12 +195,17 @@ const $=id=>document.getElementById(id);
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
 /* ---------- state ---------- */
+const TRIAL_MS=3*24*3600e3, TRIAL_KEY="chart-desk-trial";
 const DEF={tf:"H1",pro:false,server:"",sel:{src:"mt5",symbol:"XAUUSDc",name:"XAUUSD",digits:2,desc:"Gold"},group:"Semua",ind:{
   dema:{on:true,p:{period:14}},tema:{on:true,p:{period:14}},trix:{on:true,p:{period:14}},
   ama:{on:true,p:{period:9,fast:2,slow:30}},frama:{on:false,p:{period:14}},vidya:{on:false,p:{cmo:9,ema:12}},
   adxw:{on:true,p:{period:14,level:20}},cho:{on:false,p:{fast:3,slow:10}}}};
 let S=(()=>{try{const s=JSON.parse(localStorage.getItem(LS));if(s&&s.ind){const d=structuredClone(DEF);for(const k in d.ind)if(s.ind[k])d.ind[k]=s.ind[k];
-  ["tf","server","sel","group"].forEach(k=>{if(s[k]!=null)d[k]=s[k]});d.pro=!!s.pro;return d}}catch(e){}return structuredClone(DEF)})();
+  ["tf","server","sel","group"].forEach(k=>{if(s[k]!=null)d[k]=s[k]});d.pro=false;if(s.pro)d.legacyTrial=true;return d}}catch(e){}return structuredClone(DEF)})();
+// trial: disimpan terpisah; pengguna lama yang sudah menekan "coba gratis" dapat 3 hari mulai sekarang
+function trialStart(){try{let t=+localStorage.getItem(TRIAL_KEY)||0;if(!t&&S.legacyTrial){t=Date.now();localStorage.setItem(TRIAL_KEY,t)}return t}catch(e){return 0}}
+const trialLeft=()=>{const t=trialStart();return t?t+TRIAL_MS-Date.now():null};
+const proActive=()=>S.pro||((trialLeft()??-1)>0);
 const save=()=>{try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}};
 
 const META={
@@ -292,7 +298,7 @@ function chartOpts(h){return{autoSize:true,height:h,layout:{background:{type:"so
   timeScale:{borderColor:css("--line"),timeVisible:true,secondsVisible:false},crosshair:{mode:0}}}
 const line=(ch,color,w=1.5,style=0)=>{const o={color,lineWidth:w,lineStyle:style,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false};if(ch===main)o.priceFormat=pf();return ch.addLineSeries(o)};
 const ser=(arr,f=x=>x)=>data.map((c,i)=>arr[i]==null||!isFinite(f(arr[i]))?{time:c.t+WIB}:{time:c.t+WIB,value:f(arr[i])});
-const active=k=>S.ind[k].on&&(!META[k].pro||S.pro);
+const active=k=>S.ind[k].on&&(!META[k].pro||proActive());
 const P=k=>S.ind[k].p;
 function osc(label){const box=document.createElement("div");box.className="osc";box.innerHTML='<span class="tag"></span>';box.firstChild.textContent=label;$("oscWrap").appendChild(box);
   const o=chartOpts(120);const ch=LightweightCharts.createChart(box,{...o,timeScale:{...o.timeScale,visible:false},layout:{...o.layout,attributionLogo:false}});oscCharts.push(ch);return ch}
@@ -397,7 +403,7 @@ setInterval(pollQuotes,5000);
 /* ---------- daftar indikator ---------- */
 function lists(){
   const mk=(k,host)=>{
-    const m=META[k],locked=m.pro&&!S.pro,row=document.createElement("div");row.className="ind"+(locked?" locked":"");
+    const m=META[k],locked=m.pro&&!proActive(),row=document.createElement("div");row.className="ind"+(locked?" locked":"");
     const sub=()=>m.full+" · "+m.fields.map(([f])=>S.ind[k].p[f]).join(", ");
     row.innerHTML=`<span class="sw" style="--c:var(${m.color})"></span><div class="nm"><b></b><small></small><small class="d"></small></div>
       ${locked?'<span class="lock">🔒 Pro</span>':'<button class="gear" type="button">Atur</button>'}
@@ -418,10 +424,16 @@ function lists(){
   };
   $("free").innerHTML="";$("proList").innerHTML="";
   FREE.forEach(k=>mk(k,$("free")));PRO.forEach(k=>mk(k,$("proList")));
-  $("cta").hidden=S.pro;
+  $("cta").hidden=proActive();
+  const left=trialLeft(),ti=$("trialInfo"),tb=$("trial");
+  if(left!=null&&left>0){const h=Math.floor(left/3600e3);ti.hidden=false;ti.textContent=`Trial aktif · sisa ${Math.floor(h/24)} hari ${h%24} jam. Setelah itu indikator Pro terkunci lagi.`}
+  else ti.hidden=true;
+  if(left!=null&&left<=0){tb.disabled=true;tb.textContent="Trial 3 hari sudah dipakai";tb.style.opacity=".55"}
 }
 $("sub").onclick=()=>{$("subNote").hidden=false};
-$("trial").onclick=()=>{S.pro=true;save();lists();rebuild()};
+$("trial").onclick=()=>{if(trialStart())return;try{localStorage.setItem(TRIAL_KEY,Date.now())}catch(e){}lists();rebuild()};
+// cek tiap menit: saat trial habis, kunci lagi indikator Pro
+let wasPro=null;setInterval(()=>{const now=proActive();if(wasPro!==null&&now!==wasPro){lists();rebuild()}else if(now)lists();wasPro=now},60000);
 
 Object.keys(TFS).forEach(tf=>{const b=document.createElement("button");b.className="chip";b.type="button";b.textContent=tf;b.setAttribute("aria-pressed",tf===S.tf);
   b.onclick=()=>{S.tf=tf;save();document.querySelectorAll("#tfs .chip").forEach(x=>x.setAttribute("aria-pressed",x===b));data=[];load(true)};$("tfs").appendChild(b)});
