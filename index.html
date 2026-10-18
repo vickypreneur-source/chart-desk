@@ -210,6 +210,13 @@ a.btn{text-decoration:none;display:inline-block}
       <a class="btn" id="tgLink" href="#" target="_blank" rel="noopener">Hubungkan Telegram</a>
       <button class="btn ghost" type="button" id="tgCheck">Sudah, cek koneksi</button>
     </div>
+    <div id="tgManual" hidden style="display:flex;flex-direction:column;gap:6px;background:var(--bg);border-radius:10px;padding:10px 12px">
+      <span class="hint">Di laptop tanpa aplikasi Telegram? Pakai Telegram Web:</span>
+      <span class="hint">1. Buka <a id="tgWeb" href="#" target="_blank" rel="noopener" style="color:var(--gold)">chat bot di Telegram Web</a> dan login.</span>
+      <span class="hint">2. Kirim pesan ini ke bot (salin persis):</span>
+      <div class="row"><code class="num" id="tgCmd" style="flex:1 1 180px;min-width:0;overflow-wrap:anywhere;font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;user-select:all"></code><button class="btn ghost" type="button" id="tgCopy">Salin</button></div>
+      <span class="hint">3. Kembali ke sini, klik "Sudah, cek koneksi".</span>
+    </div>
     <div id="alertForm" hidden style="display:flex;flex-direction:column;gap:10px">
       <div class="rem-grid">
         <div><label for="aKind">Jenis alert</label><select id="aKind">
@@ -510,10 +517,11 @@ function aKindUI(){const k=$("aKind").value;$("aValWrap").hidden=k==="signal";$(
   if(k.startsWith("price")&&data.length)$("aVal").value=data.at(-1).c.toFixed(S.sel.digits);if(k==="adx")$("aVal").value=25;aForText()}
 $("aKind").onchange=aKindUI;
 async function alertStatus(){
-  if(!live){$("alertTag").className="live";$("alertTag").textContent="Butuh server";$("alertHint").textContent="Alert butuh koneksi ke server data (status Live).";$("alertLink").hidden=true;$("alertForm").hidden=true;return}
+  if(!live){$("alertTag").className="live";$("alertTag").textContent="Butuh server";$("alertHint").textContent="Alert butuh koneksi ke server data (status Live).";$("alertLink").hidden=true;$("alertForm").hidden=true;$("tgManual").hidden=true;return}
   try{tgState=await api("/api/alerts/status?code="+tgCode())}catch(e){return}
-  if(!tgState.telegram){$("alertTag").className="live err";$("alertTag").textContent="Bot belum aktif";$("alertHint").textContent="Server belum mengaktifkan bot Telegram (file telegram.json di VPS).";$("alertLink").hidden=true;$("alertForm").hidden=true;return}
+  if(!tgState.telegram){$("alertTag").className="live err";$("alertTag").textContent="Bot belum aktif";$("alertHint").textContent="Server belum mengaktifkan bot Telegram (file telegram.json di VPS).";$("alertLink").hidden=true;$("alertForm").hidden=true;$("tgManual").hidden=true;return}
   $("tgLink").href=`https://t.me/${tgState.bot}?start=${tgCode()}`;
+  $("tgWeb").href=`https://web.telegram.org/k/#@${tgState.bot}`;$("tgCmd").textContent=`/start ${tgCode()}`;$("tgManual").hidden=tgState.linked;
   $("alertLink").hidden=tgState.linked;$("alertForm").hidden=!tgState.linked;
   $("alertTag").className="live"+(tgState.linked?" on":"");$("alertTag").textContent=tgState.linked?"Terhubung":"Belum terhubung";
   $("alertHint").textContent=tgState.linked?"Alert dikirim ke Telegram-mu. Ketik /daftar di bot untuk melihat semua alert.":"Ketuk Hubungkan Telegram, lalu tekan Start di bot. Setelah itu kembali ke sini.";
@@ -528,6 +536,8 @@ async function alertList(){
 }
 $("tgLink").onclick=()=>{clearInterval(tgPoll);let n=0;tgPoll=setInterval(()=>{if(++n>40)clearInterval(tgPoll);alertStatus()},3000)};
 $("tgCheck").onclick=alertStatus;
+$("tgCopy").onclick=()=>{const t=$("tgCmd").textContent;const ok=()=>{$("tgCopy").textContent="Tersalin ✓"};
+  if(navigator.clipboard)navigator.clipboard.writeText(t).then(ok,()=>{getSelection().selectAllChildren($("tgCmd"))});else getSelection().selectAllChildren($("tgCmd"))};
 $("aAdd").onclick=async()=>{
   const k=$("aKind").value,q=new URLSearchParams({code:tgCode(),kind:k,src:S.sel.src,symbol:S.sel.symbol,name:S.sel.name,tf:S.tf});
   if(k!=="signal"){const v=num($("aVal").value);if(!isFinite(v)){$("aVal").focus();return}q.set("value",v)}
