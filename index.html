@@ -177,11 +177,11 @@ h2{font-family:var(--display);font-weight:600;font-size:16px;margin:0}
   <section class="panel" aria-labelledby="h-src">
     <h2 id="h-src">Sumber data</h2>
     <form class="cfg" id="cfg">
-      <input id="srv" type="url" placeholder="https://alamat-server-kamu.trycloudflare.com" aria-label="Alamat server data">
+      <input id="srv" type="url" placeholder="Kosong = server bawaan" aria-label="Alamat server data">
       <button class="btn" type="submit">Hubungkan</button>
       <button class="btn ghost" type="button" id="useDemo">Pakai data contoh</button>
     </form>
-    <p class="hint" id="srvMsg">Kosongkan untuk memakai data contoh. Isi alamat Chart Bridge di VPS untuk harga live MT5 + crypto.</p>
+    <p class="hint" id="srvMsg">Biarkan kosong untuk memakai server bawaan. Isi alamat lain hanya kalau diminta.</p>
   </section>
 
   <p class="foot">Rumus mengikuti indikator bawaan MetaTrader 5 desktop. Crypto: data publik Binance. Chart oleh <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts</a>. Bukan saran investasi.</p>
@@ -234,17 +234,21 @@ function demoCandles(sym,tf){
 
 /* ---------- server ---------- */
 let live=false,symbols=DEMO_SYMS,quotes={};
-const api=(path)=>fetch(S.server.replace(/\/+$/,"")+path,{cache:"no-store"}).then(r=>{if(!r.ok)return r.json().then(j=>{throw new Error(j.error||r.status)});return r.json()});
+let SRV="",CFG={};
+async function loadConfig(){try{CFG=await (await fetch("config.json?t="+Date.now(),{cache:"no-store"})).json()}catch(e){CFG={}}}
+function effectiveServer(){return S.server==="demo"?"":(S.server||CFG.server||"")}
+const api=(path)=>fetch(SRV.replace(/\/+$/,"")+path,{cache:"no-store"}).then(r=>{if(!r.ok)return r.json().then(j=>{throw new Error(j.error||r.status)});return r.json()});
 function setTag(state,txt){const t=$("liveTag");t.className="live"+(state?" "+state:"");t.textContent=txt}
 async function connect(){
-  if(!S.server){live=false;symbols=DEMO_SYMS;setTag("","Data contoh");$("srvMsg").textContent="Memakai data contoh. Isi alamat Chart Bridge untuk harga live.";return}
+  SRV=effectiveServer();
+  if(!SRV){live=false;symbols=DEMO_SYMS;setTag("","Data contoh");$("srvMsg").textContent=S.server==="demo"?"Memakai data contoh. Kosongkan kolom lalu tekan Hubungkan untuk kembali ke server bawaan.":"Server bawaan belum diatur. Isi alamat Chart Bridge untuk harga live.";return}
   setTag("","Menghubungkan…");
   try{
     const h=await api("/api/health");const s=await api("/api/symbols");
     symbols=s.symbols.length?s.symbols:DEMO_SYMS;live=true;
     setTag("on",h.demo?"Live (server demo)":"Live");
     const nm=symbols.filter(x=>x.src==="mt5").length,nc=symbols.filter(x=>x.src==="crypto").length;
-    $("srvMsg").textContent=`Terhubung: ${nm} simbol MT5, ${nc} crypto.`;
+    $("srvMsg").textContent=`Terhubung${S.server?" (alamat manual)":" ke server bawaan"}: ${nm} simbol MT5, ${nc} crypto.`;
     if(!symbols.some(x=>x.src===S.sel.src&&x.symbol===S.sel.symbol)){const x=symbols.find(y=>/XAU/.test(y.symbol))||symbols[0];S.sel={src:x.src,symbol:x.symbol,name:x.name,digits:x.digits,desc:x.desc};save()}
   }catch(e){
     live=false;symbols=DEMO_SYMS;setTag("err","Offline · data contoh");
@@ -423,12 +427,12 @@ Object.keys(TFS).forEach(tf=>{const b=document.createElement("button");b.classNa
   b.onclick=()=>{S.tf=tf;save();document.querySelectorAll("#tfs .chip").forEach(x=>x.setAttribute("aria-pressed",x===b));data=[];load(true)};$("tfs").appendChild(b)});
 
 /* ---------- sumber data ---------- */
-$("srv").value=S.server;
+$("srv").value=S.server==="demo"?"":S.server;
 $("cfg").addEventListener("submit",async e=>{e.preventDefault();S.server=$("srv").value.trim();save();await connect();header();data=[];await load(true);loop()});
-$("useDemo").onclick=async()=>{S.server="";$("srv").value="";save();await connect();if(!DEMO_SYMS.some(x=>x.symbol===S.sel.symbol)){const x=DEMO_SYMS[0];S.sel={src:x.src,symbol:x.symbol,name:x.name,digits:x.digits,desc:x.desc}}header();data=[];await load(true);loop()};
+$("useDemo").onclick=async()=>{S.server="demo";$("srv").value="";save();await connect();if(!DEMO_SYMS.some(x=>x.symbol===S.sel.symbol)){const x=DEMO_SYMS[0];S.sel={src:x.src,symbol:x.symbol,name:x.name,digits:x.digits,desc:x.desc}}header();data=[];await load(true);loop()};
 
 /* ---------- mulai ---------- */
-async function boot(){lists();await connect();header();data=[];await load(true);loop()}
+async function boot(){lists();await loadConfig();await connect();header();data=[];await load(true);loop()}
 if(window.LightweightCharts){boot();
   const re=()=>{if(data.length)rebuild()};
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change",re);
