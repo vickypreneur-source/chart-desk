@@ -174,7 +174,7 @@ h2{font-family:var(--display);font-weight:600;font-size:16px;margin:0}
     </div>
   </section>
 
-  <section class="panel" aria-labelledby="h-src">
+  <section class="panel" aria-labelledby="h-src" id="srcPanel" hidden>
     <h2 id="h-src">Sumber data</h2>
     <form class="cfg" id="cfg">
       <input id="srv" type="url" placeholder="Kosong = server bawaan" aria-label="Alamat server data">
@@ -430,6 +430,10 @@ Object.keys(TFS).forEach(tf=>{const b=document.createElement("button");b.classNa
 $("srv").value=S.server==="demo"?"":S.server;
 $("cfg").addEventListener("submit",async e=>{e.preventDefault();S.server=$("srv").value.trim();save();await connect();header();data=[];await load(true);loop()});
 $("useDemo").onclick=async()=>{S.server="demo";$("srv").value="";save();await connect();if(!DEMO_SYMS.some(x=>x.symbol===S.sel.symbol)){const x=DEMO_SYMS[0];S.sel={src:x.src,symbol:x.symbol,name:x.name,digits:x.digits,desc:x.desc}}header();data=[];await load(true);loop()};
+
+/* ---------- panel admin: hanya tampil lewat alamat .../#admin ---------- */
+function adminView(){$("srcPanel").hidden=location.hash!=="#admin"}
+adminView();addEventListener("hashchange",adminView);
 
 /* ---------- mulai ---------- */
 async function boot(){lists();await loadConfig();await connect();header();data=[];await load(true);loop()}
