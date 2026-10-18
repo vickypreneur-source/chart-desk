@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#151b24">
+<meta name="description" content="Chart MT5 + crypto dengan indikator khas MT5 desktop.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Chart Desk">
+<title>Chart Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: aplikasi chart satu kolom — harga di atas, chart + osilator, ringkasan sinyal, lalu daftar indikator (gratis & Pro) */
+:root{
+  --bg:#f3f4f7; --surface:#ffffff; --ink:#151b24; --muted:#5f6a7a; --line:#dde1e8; --grid:#eceef2;
+  --gold:#a8760b; --gold-soft:#f6ecd4; --gold-ink:#ffffff;
+  --up:#16794a; --up-soft:#dcf1e6; --down:#c0392b; --down-soft:#f8e0e0; --neutral:#5f6a7a; --neutral-soft:#e8ebf0;
+  --i1:#2f6fd6; --i2:#d9822b; --i3:#7a4fd0; --i4:#0f8a8a; --i5:#c2417d; --pro:#b07d12;
+  --display:"Sora",ui-sans-serif,system-ui,sans-serif;
+  --body:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e131a; --surface:#161d27; --ink:#e7ebf1; --muted:#97a2b3; --line:#283141; --grid:#1d2532;
+  --gold:#e3b44c; --gold-soft:#3a2f15; --gold-ink:#1a1407;
+  --up:#4cc488; --up-soft:#173527; --down:#f07a7e; --down-soft:#3b1d20; --neutral:#97a2b3; --neutral-soft:#232c3a;
+  --i1:#6ea2ff; --i2:#f0a65a; --i3:#a98bf0; --i4:#46c2c2; --i5:#ec7fb0; --pro:#e3b44c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e131a; --surface:#161d27; --ink:#e7ebf1; --muted:#97a2b3; --line:#283141; --grid:#1d2532;
+  --gold:#e3b44c; --gold-soft:#3a2f15; --gold-ink:#1a1407;
+  --up:#4cc488; --up-soft:#173527; --down:#f07a7e; --down-soft:#3b1d20; --neutral:#97a2b3; --neutral-soft:#232c3a;
+  --i1:#6ea2ff; --i2:#f0a65a; --i3:#a98bf0; --i4:#46c2c2; --i5:#ec7fb0; --pro:#e3b44c; color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:720px;margin:0 auto;padding-block:16px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+h2{font-family:var(--display);font-weight:600;font-size:16px;margin:0}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.sym{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0}
+.sym small{font-family:var(--body);font-weight:500;font-size:12px;color:var(--muted);margin-left:6px;letter-spacing:0}
+.price{font-family:var(--mono);font-size:28px;font-weight:600;line-height:1.1}
+.chg{font-family:var(--mono);font-size:14px;font-weight:600}
+.up-c{color:var(--up)}.down-c{color:var(--down)}
+.demo{font-size:12px;background:var(--gold-soft);color:var(--gold);border-radius:8px;padding:4px 10px;font-weight:600}
+.tfs{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 14px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+#main{height:340px}
+.osc{height:120px;border-top:1px solid var(--line);position:relative}
+.osc .tag{position:absolute;left:10px;top:6px;z-index:3;font-size:11px;font-weight:600;color:var(--muted);background:var(--surface);padding:0 4px;border-radius:4px;pointer-events:none}
+.legend{display:flex;gap:6px 12px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid var(--line);font-size:12px}
+.legend span{display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+.legend i{width:14px;height:3px;border-radius:2px;background:var(--c)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.verdict{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.big{font-family:var(--display);font-weight:700;font-size:22px}
+.meter{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--neutral-soft)}
+.meter i{display:block;height:100%}
+.sig{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.sig:first-child{border-top:0}
+.sig small{grid-column:1/-1;color:var(--muted);font-size:12px}
+.pill{font-size:11px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px;text-transform:uppercase}
+.pill.buy{background:var(--up-soft);color:var(--up)}.pill.sell{background:var(--down-soft);color:var(--down)}.pill.neutral{background:var(--neutral-soft);color:var(--neutral)}
+.ind{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.ind:first-child{border-top:0}
+.sw{width:12px;height:12px;border-radius:3px;background:var(--c)}
+.ind .nm{min-width:0}
+.ind .nm b{font-weight:600}
+.ind .nm small{display:block;color:var(--muted);font-size:12px;font-family:var(--mono)}
+.tg{position:relative;width:42px;height:24px;flex:0 0 auto}
+.tg input{opacity:0;width:100%;height:100%;margin:0;position:absolute;inset:0;cursor:pointer;z-index:1}
+.tg span{position:absolute;inset:0;background:var(--line);border-radius:12px;transition:background .15s}
+.tg span::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--surface);transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.tg input:checked+span{background:var(--gold)}
+.tg input:checked+span::after{transform:translateX(18px)}
+.tg input:focus-visible+span{outline:2px solid var(--gold);outline-offset:2px}
+.gear{font:inherit;font-size:13px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:8px;padding:5px 10px;cursor:pointer}
+.params{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;background:var(--bg);border-radius:10px;padding:10px}
+.params label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;display:block;margin-bottom:3px}
+.params input{font:inherit;font-family:var(--mono);width:100%;min-width:0;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.pro-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.badge{font-size:11px;font-weight:700;letter-spacing:.08em;background:var(--pro);color:var(--gold-ink);padding:3px 8px;border-radius:6px}
+.lock{font-size:12px;color:var(--pro);font-weight:600}
+.locked .nm,.locked .sw{opacity:.55}
+.cta{display:flex;flex-direction:column;gap:10px;background:var(--gold-soft);border-radius:12px;padding:14px}
+.cta p{margin:0;font-size:14px}
+.btn{font:inherit;font-weight:600;border:0;border-radius:10px;padding:11px 16px;cursor:pointer;background:var(--gold);color:var(--gold-ink)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.add{border:1px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--muted)}
+.foot{font-size:12px;color:var(--muted);text-align:center;margin:0}
+.foot a{color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.symbtn{font:inherit;background:none;border:0;padding:0;color:inherit;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px}
+.symbtn .caret{font-size:14px;color:var(--muted)}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;border-radius:999px;padding:4px 10px;background:var(--neutral-soft);color:var(--muted)}
+.live::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.live.on{background:var(--up-soft);color:var(--up)}
+.live.err{background:var(--down-soft);color:var(--down)}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.search{font:inherit;width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.groups{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.groups .chip{flex:0 0 auto}
+.wl{max-height:360px;overflow-y:auto;display:flex;flex-direction:column}
+.wl button{font:inherit;color:inherit;background:none;border:0;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:0 10px;padding:9px 4px;text-align:left;cursor:pointer;align-items:center}
+.wl button:first-child{border-top:0}
+.wl button[aria-current="true"]{background:var(--gold-soft);border-radius:8px}
+.wl .n{font-weight:600}
+.wl .d{grid-column:1;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.wl .p{grid-row:1/3;grid-column:2;text-align:right;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+.wl .p small{display:block;font-size:12px}
+.cfg{display:flex;gap:8px;flex-wrap:wrap}
+.cfg input{flex:1 1 220px;min-width:0;font:inherit;font-family:var(--mono);font-size:13px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.hint{font-size:12px;color:var(--muted);margin:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="head">
+    <div>
+      <button class="symbtn" type="button" id="symBtn" aria-expanded="false" aria-controls="picker"><span class="sym" id="symName">XAUUSD</span><span class="caret">▾</span></button>
+      <div class="muted" style="font-size:12px" id="symDesc"></div>
+      <div class="row"><span class="price" id="px">–</span><span class="chg" id="chg"></span></div>
+    </div>
+    <span class="live" id="liveTag">Data contoh</span>
+  </div>
+
+  <section class="sheet" id="picker" hidden aria-label="Pilih simbol">
+    <input class="search" id="q" type="search" placeholder="Cari simbol: XAU, EURUSD, BTC…" autocomplete="off">
+    <div class="groups" id="groups"></div>
+    <div class="wl" id="wl"></div>
+  </section>
+
+  <div class="tfs" role="group" aria-label="Timeframe" id="tfs"></div>
+
+  <div class="card">
+    <div id="main"></div>
+    <div id="oscWrap"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <section class="panel" aria-labelledby="h-sig">
+    <div class="verdict">
+      <div><h2 id="h-sig">Ringkasan sinyal</h2><div class="big" id="overall">–</div></div>
+      <span class="num muted" id="count"></span>
+    </div>
+    <div class="meter" id="meter" aria-hidden="true"></div>
+    <div id="sigs"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-ind">
+    <div class="pro-head"><h2 id="h-ind">Gratis</h2><span class="muted" style="font-size:12px">Tidak ada di aplikasi MT5 HP</span></div>
+    <div id="free"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-pro">
+    <div class="pro-head"><h2 id="h-pro">Pro</h2><span class="badge">PRO</span></div>
+    <div id="proList"></div>
+    <div class="cta" id="cta">
+      <p><b>Buka 5 indikator Pro</b>: indikator adaptif dan ADX Wilder yang biasanya hanya bisa dipakai di MT5 desktop.</p>
+      <div class="row"><button class="btn" type="button" id="sub">Langganan Pro · Rp49.000/bulan</button><button class="btn ghost" type="button" id="trial">Coba gratis (demo)</button></div>
+      <small class="muted" id="subNote" hidden>Prototipe: tombol langganan belum terhubung ke pembayaran.</small>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-src">
+    <h2 id="h-src">Sumber data</h2>
+    <form class="cfg" id="cfg">
+      <input id="srv" type="url" placeholder="https://alamat-server-kamu.trycloudflare.com" aria-label="Alamat server data">
+      <button class="btn" type="submit">Hubungkan</button>
+      <button class="btn ghost" type="button" id="useDemo">Pakai data contoh</button>
+    </form>
+    <p class="hint" id="srvMsg">Kosongkan untuk memakai data contoh. Isi alamat Chart Bridge di VPS untuk harga live MT5 + crypto.</p>
+  </section>
+
+  <p class="foot">Rumus mengikuti indikator bawaan MetaTrader 5 desktop. Crypto: data publik Binance. Chart oleh <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts</a>. Bukan saran investasi.</p>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+const LS="chart-desk-v1";
+const $=id=>document.getElementById(id);
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ---------- state ---------- */
+const DEF={tf:"H1",pro:false,server:"",sel:{src:"mt5",symbol:"XAUUSDc",name:"XAUUSD",digits:2,desc:"Gold"},group:"Semua",ind:{
+  dema:{on:true,p:{period:14}},tema:{on:true,p:{period:14}},trix:{on:true,p:{period:14}},
+  ama:{on:true,p:{period:9,fast:2,slow:30}},frama:{on:false,p:{period:14}},vidya:{on:false,p:{cmo:9,ema:12}},
+  adxw:{on:true,p:{period:14,level:20}},cho:{on:false,p:{fast:3,slow:10}}}};
+let S=(()=>{try{const s=JSON.parse(localStorage.getItem(LS));if(s&&s.ind){const d=structuredClone(DEF);for(const k in d.ind)if(s.ind[k])d.ind[k]=s.ind[k];
+  ["tf","server","sel","group"].forEach(k=>{if(s[k]!=null)d[k]=s[k]});d.pro=!!s.pro;return d}}catch(e){}return structuredClone(DEF)})();
+const save=()=>{try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}};
+
+const META={
+  dema:{name:"DEMA",full:"Double Exponential MA",color:"--i1",kind:"overlay",fields:[["period","Periode",2,300]],desc:"MA lebih cepat, lag lebih kecil dari EMA."},
+  tema:{name:"TEMA",full:"Triple Exponential MA",color:"--i2",kind:"overlay",fields:[["period","Periode",2,300]],desc:"Lebih cepat lagi dari DEMA."},
+  trix:{name:"TRIX",full:"Triple Exponential Average",color:"--i4",kind:"osc",fields:[["period","Periode",2,200]],desc:"Momentum dari EMA tiga lapis; di atas 0 = naik."},
+  ama:{name:"AMA",full:"Adaptive Moving Average (Kaufman)",color:"--pro",kind:"overlay",pro:true,fields:[["period","Periode ER",2,100],["fast","EMA cepat",1,20],["slow","EMA lambat",5,100]],desc:"Lambat saat sideways, cepat saat trend."},
+  frama:{name:"FrAMA",full:"Fractal Adaptive MA",color:"--i3",kind:"overlay",pro:true,fields:[["period","Periode",2,100]],desc:"Kecepatan menyesuaikan dimensi fraktal harga."},
+  vidya:{name:"VIDYA",full:"Variable Index Dynamic Average",color:"--i5",kind:"overlay",pro:true,fields:[["cmo","Periode CMO",2,100],["ema","Periode EMA",2,100]],desc:"Kecepatan mengikuti momentum (CMO)."},
+  adxw:{name:"ADX Wilder",full:"Average Directional Movement Index Wilder",color:"--pro",kind:"osc",pro:true,fields:[["period","Periode",2,100],["level","Batas trend",5,50]],desc:"Kekuatan trend + arah (+DI / −DI)."},
+  cho:{name:"Chaikin Osc",full:"Chaikin Oscillator",color:"--i3",kind:"osc",pro:true,fields:[["fast","EMA cepat",1,50],["slow","EMA lambat",2,100]],desc:"Tekanan beli/jual dari tick volume."}
+};
+const FREE=["dema","tema","trix"],PRO=["ama","frama","vidya","adxw","cho"];
+const TFS={M5:5,M15:15,H1:60,H4:240,D1:1440};
+if(!TFS[S.tf])S.tf="H1";
+
+/* ---------- data contoh (tanpa server) ---------- */
+const DEMO_SYMS=[["mt5","XAUUSDc","XAUUSD","Gold",2,"Metals",2650],["mt5","XAGUSDc","XAGUSD","Silver",3,"Metals",31.2],["mt5","EURUSDc","EURUSD","Euro vs Dollar",5,"Forex",1.085],
+  ["mt5","GBPJPYc","GBPJPY","Pound vs Yen",3,"Forex",192.4],["mt5","USDJPYc","USDJPY","Dollar vs Yen",3,"Forex",149.8],["mt5","US30c","US30","Dow Jones",1,"Indices",42800],
+  ["crypto","BTCUSDT","BTC/USDT","Binance spot",2,"Crypto",67000],["crypto","ETHUSDT","ETH/USDT","Binance spot",2,"Crypto",2600],["crypto","SOLUSDT","SOL/USDT","Binance spot",2,"Crypto",150]]
+  .map(([src,symbol,name,desc,digits,group,base])=>({src,symbol,name,desc,digits,group,base}));
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function hash(s){let h=7;for(const c of s)h=Math.imul(h,31)+c.charCodeAt(0)|0;return h}
+function demoCandles(sym,tf){
+  const m=DEMO_SYMS.find(x=>x.symbol===sym)||DEMO_SYMS[0],mins=TFS[tf],step=mins*60,r=rng(hash(m.symbol+tf));
+  const end=Math.floor(Date.now()/1000/step)*step;let p=m.base;const vol=m.base*0.0012*Math.sqrt(mins/15),out=[];
+  for(let i=499;i>=0;i--){const o=p,c=o+(r()-0.5)*2*vol+Math.sin(i/37)*vol*0.1;
+    out.push({t:end-i*step,o,h:Math.max(o,c)+r()*vol*0.7,l:Math.min(o,c)-r()*vol*0.7,c,v:Math.round(200+r()*1800)});p=c}
+  const w=Math.sin(Date.now()/7000)*vol*0.3,L=out.at(-1);L.c+=w;L.h=Math.max(L.h,L.c);L.l=Math.min(L.l,L.c);
+  return out;
+}
+
+/* ---------- server ---------- */
+let live=false,symbols=DEMO_SYMS,quotes={};
+const api=(path)=>fetch(S.server.replace(/\/+$/,"")+path,{cache:"no-store"}).then(r=>{if(!r.ok)return r.json().then(j=>{throw new Error(j.error||r.status)});return r.json()});
+function setTag(state,txt){const t=$("liveTag");t.className="live"+(state?" "+state:"");t.textContent=txt}
+async function connect(){
+  if(!S.server){live=false;symbols=DEMO_SYMS;setTag("","Data contoh");$("srvMsg").textContent="Memakai data contoh. Isi alamat Chart Bridge untuk harga live.";return}
+  setTag("","Menghubungkan…");
+  try{
+    const h=await api("/api/health");const s=await api("/api/symbols");
+    symbols=s.symbols.length?s.symbols:DEMO_SYMS;live=true;
+    setTag("on",h.demo?"Live (server demo)":"Live");
+    const nm=symbols.filter(x=>x.src==="mt5").length,nc=symbols.filter(x=>x.src==="crypto").length;
+    $("srvMsg").textContent=`Terhubung: ${nm} simbol MT5, ${nc} crypto.`;
+    if(!symbols.some(x=>x.src===S.sel.src&&x.symbol===S.sel.symbol)){const x=symbols.find(y=>/XAU/.test(y.symbol))||symbols[0];S.sel={src:x.src,symbol:x.symbol,name:x.name,digits:x.digits,desc:x.desc};save()}
+  }catch(e){
+    live=false;symbols=DEMO_SYMS;setTag("err","Offline · data contoh");
+    $("srvMsg").textContent="Tidak bisa terhubung ke server ("+e.message+"). Cek alamatnya dan pastikan Chart Bridge + tunnel di VPS jalan. ";
+  }
+}
+async function getCandles(){
+  if(live){const d=await api(`/api/candles?src=${S.sel.src}&symbol=${encodeURIComponent(S.sel.symbol)}&tf=${S.tf}&n=500`);S.sel.digits=d.digits;return d.candles}
+  return demoCandles(S.sel.symbol,S.tf);
+}
+
+/* ---------- rumus (mengikuti indikator bawaan MT5) ---------- */
+function ema(v,n){const k=2/(n+1);let e=null,start=-1;return v.map((x,i)=>{if(x==null)return null;if(start<0)start=i;if(i-start<n-1)return null;if(e==null){e=v.slice(i-n+1,i+1).reduce((a,b)=>a+b,0)/n;return e}e=x*k+e*(1-k);return e})}
+const dema=(v,n)=>{const e1=ema(v,n),e2=ema(e1,n);return v.map((_,i)=>e1[i]!=null&&e2[i]!=null?2*e1[i]-e2[i]:null)};
+const tema=(v,n)=>{const e1=ema(v,n),e2=ema(e1,n),e3=ema(e2,n);return v.map((_,i)=>e3[i]!=null?3*e1[i]-3*e2[i]+e3[i]:null)};
+function trix(v,n){const e3=ema(ema(ema(v,n),n),n);return e3.map((x,i)=>x!=null&&e3[i-1]!=null&&e3[i-1]!==0?(x-e3[i-1])/e3[i-1]:null)}
+function ama(v,n,f,s){const fs=2/(f+1),ss=2/(s+1);const out=Array(v.length).fill(null);let prev=null;
+  for(let i=n;i<v.length;i++){let noise=0;for(let j=i-n+1;j<=i;j++)noise+=Math.abs(v[j]-v[j-1]);const er=noise?Math.abs(v[i]-v[i-n])/noise:0;const c=(er*(fs-ss)+ss)**2;prev=prev==null?v[i]:prev+c*(v[i]-prev);out[i]=prev}return out}
+function frama(d,n){const out=Array(d.length).fill(null);let prev=null;const hh=(a,b)=>{let m=-Infinity;for(let j=a;j<=b;j++)m=Math.max(m,d[j].h);return m},ll=(a,b)=>{let m=Infinity;for(let j=a;j<=b;j++)m=Math.min(m,d[j].l);return m};
+  for(let i=2*n-1;i<d.length;i++){const n1=(hh(i-n+1,i)-ll(i-n+1,i))/n,n2=(hh(i-2*n+1,i-n)-ll(i-2*n+1,i-n))/n,n3=(hh(i-2*n+1,i)-ll(i-2*n+1,i))/(2*n);
+    const D=(n1+n2>0&&n3>0)?(Math.log(n1+n2)-Math.log(n3))/Math.LN2:1;const a=Math.min(1,Math.max(0.01,Math.exp(-4.6*(D-1))));
+    prev=prev==null?d[i].c:a*d[i].c+(1-a)*prev;out[i]=prev}return out}
+function vidya(v,cm,en){const a=2/(en+1),out=Array(v.length).fill(null);let prev=null;
+  for(let i=cm;i<v.length;i++){let up=0,dn=0;for(let j=i-cm+1;j<=i;j++){const df=v[j]-v[j-1];if(df>0)up+=df;else dn-=df}const cmo=up+dn?Math.abs(up-dn)/(up+dn):0;
+    prev=prev==null?v[i]:v[i]*a*cmo+prev*(1-a*cmo);out[i]=prev}return out}
+function adxw(d,n){const L=d.length,adx=Array(L).fill(null),pdi=Array(L).fill(null),mdi=Array(L).fill(null);let tr=0,pd=0,md=0,ax=null;const dxs=[];
+  for(let i=1;i<L;i++){const up=d[i].h-d[i-1].h,dn=d[i-1].l-d[i].l,P=up>dn&&up>0?up:0,M=dn>up&&dn>0?dn:0,T=Math.max(d[i].h-d[i].l,Math.abs(d[i].h-d[i-1].c),Math.abs(d[i].l-d[i-1].c));
+    if(i<=n){tr+=T;pd+=P;md+=M;if(i<n)continue}else{tr=tr-tr/n+T;pd=pd-pd/n+P;md=md-md/n+M}
+    const p=tr?100*pd/tr:0,m=tr?100*md/tr:0;pdi[i]=p;mdi[i]=m;const dx=p+m?100*Math.abs(p-m)/(p+m):0;
+    if(ax==null){dxs.push(dx);if(dxs.length===n){ax=dxs.reduce((a,b)=>a+b,0)/n;adx[i]=ax}}else{ax=(ax*(n-1)+dx)/n;adx[i]=ax}}
+  return{adx,pdi,mdi}}
+function cho(d,f,s){let ad=0;const line=d.map(c=>{const r=c.h-c.l;ad+=r?((c.c-c.l)-(c.h-c.c))/r*c.v:0;return ad});const a=ema(line,f),b=ema(line,s);return line.map((_,i)=>a[i]!=null&&b[i]!=null?a[i]-b[i]:null)}
+
+/* ---------- chart ---------- */
+const WIB=7*3600;
+let data=[],main=null,candles=null,plots=[],oscCharts=[],sigs=[];
+const fmtP=v=>v==null||!isFinite(v)?"–":v.toFixed(S.sel.digits);
+const pf=()=>({type:"price",precision:S.sel.digits,minMove:Math.pow(10,-S.sel.digits)});
+function chartOpts(h){return{autoSize:true,height:h,layout:{background:{type:"solid",color:css("--surface")},textColor:css("--muted"),fontFamily:"IBM Plex Mono, ui-monospace, monospace",fontSize:11,attributionLogo:true},
+  grid:{vertLines:{color:css("--grid")},horzLines:{color:css("--grid")}},rightPriceScale:{borderColor:css("--line")},
+  timeScale:{borderColor:css("--line"),timeVisible:true,secondsVisible:false},crosshair:{mode:0}}}
+const line=(ch,color,w=1.5,style=0)=>{const o={color,lineWidth:w,lineStyle:style,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false};if(ch===main)o.priceFormat=pf();return ch.addLineSeries(o)};
+const ser=(arr,f=x=>x)=>data.map((c,i)=>arr[i]==null||!isFinite(f(arr[i]))?{time:c.t+WIB}:{time:c.t+WIB,value:f(arr[i])});
+const active=k=>S.ind[k].on&&(!META[k].pro||S.pro);
+const P=k=>S.ind[k].p;
+function osc(label){const box=document.createElement("div");box.className="osc";box.innerHTML='<span class="tag"></span>';box.firstChild.textContent=label;$("oscWrap").appendChild(box);
+  const o=chartOpts(120);const ch=LightweightCharts.createChart(box,{...o,timeScale:{...o.timeScale,visible:false},layout:{...o.layout,attributionLogo:false}});oscCharts.push(ch);return ch}
+
+// bangun ulang series (saat ganti indikator / parameter / simbol)
+function rebuild(){
+  if(main)main.remove();oscCharts.forEach(c=>c.remove());oscCharts=[];plots=[];$("oscWrap").innerHTML="";
+  main=LightweightCharts.createChart($("main"),chartOpts(340));
+  candles=main.addCandlestickSeries({upColor:css("--up"),downColor:css("--down"),wickUpColor:css("--up"),wickDownColor:css("--down"),borderVisible:false,priceFormat:pf()});
+  const leg=[];
+  const ov=(k,label,calc)=>{const c=css(META[k].color),s=line(main,c,2);leg.push([c,label]);
+    plots.push(()=>{const v=calc(),L=v.at(-1),px=data.at(-1).c;s.setData(ser(v));if(L!=null)sigs.push([label,px>L?"buy":"sell",`Harga ${px>L?"di atas":"di bawah"} ${META[k].name} (${fmtP(L)})`,META[k].pro])})};
+  const close=()=>data.map(c=>c.c);
+  if(active("dema"))ov("dema","DEMA "+P("dema").period,()=>dema(close(),+P("dema").period));
+  if(active("tema"))ov("tema","TEMA "+P("tema").period,()=>tema(close(),+P("tema").period));
+  if(active("ama")){const p=P("ama");ov("ama",`AMA ${p.period}, ${p.fast}, ${p.slow}`,()=>ama(close(),+p.period,+p.fast,+p.slow))}
+  if(active("frama"))ov("frama","FrAMA "+P("frama").period,()=>frama(data,+P("frama").period));
+  if(active("vidya")){const p=P("vidya");ov("vidya",`VIDYA ${p.cmo}, ${p.ema}`,()=>vidya(close(),+p.cmo,+p.ema))}
+  if(active("trix")){const n=+P("trix").period,ch=osc("TRIX "+n),s=line(ch,css("--i4"),1.5);
+    s.createPriceLine({price:0,color:css("--muted"),lineWidth:1,lineStyle:2,axisLabelVisible:false,title:""});
+    plots.push(()=>{const v=trix(close(),n),x=v.at(-1);s.setData(ser(v));if(x!=null)sigs.push(["TRIX "+n,x>0?"buy":"sell",`TRIX ${x>0?"positif":"negatif"}`,false])})}
+  if(active("adxw")){const {period:n,level:lv}=P("adxw"),ch=osc(`ADX Wilder ${n}  ·  +DI hijau, −DI merah`);
+    const a=line(ch,css("--pro"),2),p=line(ch,css("--up"),1.2),m=line(ch,css("--down"),1.2);
+    a.createPriceLine({price:+lv,color:css("--muted"),lineWidth:1,lineStyle:2,axisLabelVisible:true,title:""});
+    plots.push(()=>{const r=adxw(data,+n);a.setData(ser(r.adx));p.setData(ser(r.pdi));m.setData(ser(r.mdi));const x=r.adx.at(-1),up=r.pdi.at(-1)>r.mdi.at(-1);
+      if(x!=null)sigs.push([`ADX Wilder ${n}`,x<lv?"neutral":up?"buy":"sell",x<lv?`ADX ${x.toFixed(1)} di bawah ${lv}: belum ada trend`:`ADX ${x.toFixed(1)}: trend ${up?"naik (+DI > −DI)":"turun (−DI > +DI)"}`,true])})}
+  if(active("cho")){const {fast:f,slow:s_}=P("cho"),ch=osc(`Chaikin ${f}, ${s_}`),hs=ch.addHistogramSeries({priceLineVisible:false,lastValueVisible:false,priceFormat:{type:"volume"}});
+    plots.push(()=>{const v=cho(data,+f,+s_),x=v.at(-1);hs.setData(data.map((c,i)=>v[i]==null?{time:c.t+WIB}:{time:c.t+WIB,value:v[i],color:v[i]>=0?css("--up"):css("--down")}));
+      if(x!=null)sigs.push([`Chaikin ${f}, ${s_}`,x>0?"buy":"sell",`Tekanan ${x>0?"beli":"jual"} dominan`,true])})}
+  const all=[main,...oscCharts];
+  all.forEach(a=>a.timeScale().subscribeVisibleLogicalRangeChange(r=>{if(!r)return;all.forEach(b=>{if(b!==a)b.timeScale().setVisibleLogicalRange(r)})}));
+  $("legend").innerHTML=leg.map(([c,t])=>`<span style="--c:${c}"><i></i>${t}</span>`).join("")||'<span>Tidak ada indikator di chart utama</span>';
+  if(data.length){draw();main.timeScale().setVisibleLogicalRange({from:data.length-120,to:data.length+3})}
+}
+// isi data ke series (dipanggil setiap ada data baru)
+function draw(){
+  const range=main.timeScale().getVisibleLogicalRange();
+  candles.setData(data.map(c=>({time:c.t+WIB,open:c.o,high:c.h,low:c.l,close:c.c})));
+  sigs=[];plots.forEach(f=>f());
+  if(range)main.timeScale().setVisibleLogicalRange(range);
+  const px=data.at(-1).c,prev=data.at(-2).c,dv=px-prev;
+  $("px").textContent=fmtP(px);$("chg").textContent=(dv>=0?"+":"−")+fmtP(Math.abs(dv))+" ("+(dv/prev*100).toFixed(2)+"%)";$("chg").className="chg "+(dv>=0?"up-c":"down-c");
+  summary();
+}
+function summary(){
+  const b=sigs.filter(s=>s[1]==="buy").length,s_=sigs.filter(s=>s[1]==="sell").length,n=sigs.length-b-s_,o=$("overall");
+  if(!sigs.length){o.textContent="Nyalakan indikator";o.className="big"}
+  else if(b>s_){o.textContent=b>=sigs.length*0.7?"Kuat: BUY":"Cenderung BUY";o.className="big up-c"}
+  else if(s_>b){o.textContent=s_>=sigs.length*0.7?"Kuat: SELL":"Cenderung SELL";o.className="big down-c"}
+  else{o.textContent="Netral";o.className="big"}
+  $("count").textContent=`${b} BUY · ${s_} SELL · ${n} netral`;
+  const tot=Math.max(1,sigs.length);
+  $("meter").innerHTML=`<i style="width:${b/tot*100}%;background:var(--up)"></i><i style="width:${n/tot*100}%;background:var(--neutral-soft)"></i><i style="width:${s_/tot*100}%;background:var(--down)"></i>`;
+  $("sigs").innerHTML="";
+  sigs.forEach(([name,v,why,pro])=>{const d=document.createElement("div");d.className="sig";d.innerHTML=`<span></span><span class="pill ${v}">${v==="neutral"?"netral":v}</span><small></small>`;
+    d.firstChild.textContent=name+(pro?" ★":"");d.querySelector("small").textContent=why;$("sigs").appendChild(d)});
+}
+
+/* ---------- pemuatan data + live ---------- */
+let loadId=0,timer=null;
+async function load(full){
+  const id=++loadId;
+  try{const d=await getCandles();if(id!==loadId||!d.length)return;
+    const changed=!data.length||d.length!==data.length||d.at(-1).t!==data.at(-1).t||d.at(-1).c!==data.at(-1).c;
+    data=d;
+    if(full)rebuild();else if(changed)draw();
+  }catch(e){if(live){setTag("err","Gangguan koneksi");}}
+}
+function loop(){clearInterval(timer);timer=setInterval(()=>{if(document.visibilityState==="visible")load(false)},live?2000:3000)}
+function header(){$("symName").textContent=S.sel.name;$("symDesc").textContent=(S.sel.desc||"")+(S.sel.src==="crypto"?" · Binance":S.sel.src==="mt5"?" · MT5":"")}
+async function select(x){S.sel={src:x.src,symbol:x.symbol,name:x.name,digits:x.digits,desc:x.desc};save();header();togglePicker(false);data=[];await load(true)}
+
+/* ---------- watchlist ---------- */
+function togglePicker(open){$("picker").hidden=!open;$("symBtn").setAttribute("aria-expanded",open);if(open){renderGroups();renderList();$("q").focus();pollQuotes()}}
+$("symBtn").onclick=()=>togglePicker($("picker").hidden);
+function renderGroups(){const gs=["Semua",...new Set(symbols.map(s=>s.group))];if(!gs.includes(S.group))S.group="Semua";
+  $("groups").innerHTML="";gs.forEach(g=>{const b=document.createElement("button");b.className="chip";b.type="button";b.textContent=g;b.setAttribute("aria-pressed",g===S.group);
+    b.onclick=()=>{S.group=g;save();renderGroups();renderList();pollQuotes()};$("groups").appendChild(b)})}
+let shown=[];
+function renderList(){
+  const q=$("q").value.trim().toUpperCase();
+  shown=symbols.filter(s=>(S.group==="Semua"||s.group===S.group)&&(!q||s.name.toUpperCase().includes(q)||s.symbol.toUpperCase().includes(q)||(s.desc||"").toUpperCase().includes(q))).slice(0,80);
+  const wl=$("wl");wl.innerHTML="";
+  if(!shown.length){wl.innerHTML='<p class="hint" style="padding:8px">Simbol tidak ditemukan.</p>';return}
+  shown.forEach(s=>{const b=document.createElement("button");b.type="button";const id=s.src+":"+s.symbol;b.dataset.id=id;
+    b.setAttribute("aria-current",s.src===S.sel.src&&s.symbol===S.sel.symbol);
+    b.innerHTML='<span class="n"></span><span class="p"></span><span class="d"></span>';b.querySelector(".n").textContent=s.name;b.querySelector(".d").textContent=s.desc||s.group;
+    paintQuote(b,s);b.onclick=()=>select(s);wl.appendChild(b)});
+}
+function paintQuote(b,s){const q=quotes[b.dataset.id];const p=b.querySelector(".p");if(!q){p.textContent="";return}
+  p.innerHTML=`${q.price.toFixed(s.digits)}<small class="${q.chg>=0?"up-c":"down-c"}">${q.chg>=0?"+":""}${q.chg.toFixed(2)}%</small>`}
+$("q").oninput=()=>{renderList();clearTimeout(window.__qt);window.__qt=setTimeout(pollQuotes,300)};
+async function pollQuotes(){
+  if($("picker").hidden)return;
+  const vis=shown.slice(0,40);
+  if(live){try{const r=await api("/api/quotes?items="+encodeURIComponent(vis.map(s=>s.src+":"+s.symbol).join(",")));Object.assign(quotes,r.quotes)}catch(e){}}
+  else vis.forEach(s=>{const c=demoCandles(s.symbol,"D1"),L=c.at(-1);quotes[s.src+":"+s.symbol]={price:L.c,chg:(L.c-L.o)/L.o*100}});
+  document.querySelectorAll("#wl button").forEach(b=>{const s=shown.find(x=>x.src+":"+x.symbol===b.dataset.id);if(s)paintQuote(b,s)});
+}
+setInterval(pollQuotes,5000);
+
+/* ---------- daftar indikator ---------- */
+function lists(){
+  const mk=(k,host)=>{
+    const m=META[k],locked=m.pro&&!S.pro,row=document.createElement("div");row.className="ind"+(locked?" locked":"");
+    const sub=()=>m.full+" · "+m.fields.map(([f])=>S.ind[k].p[f]).join(", ");
+    row.innerHTML=`<span class="sw" style="--c:var(${m.color})"></span><div class="nm"><b></b><small></small><small class="d"></small></div>
+      ${locked?'<span class="lock">🔒 Pro</span>':'<button class="gear" type="button">Atur</button>'}
+      <label class="tg"><input type="checkbox" ${S.ind[k].on&&!locked?"checked":""} ${locked?"disabled":""}><span></span></label>`;
+    row.querySelector("b").textContent=m.name;row.querySelector("small").textContent=sub();row.querySelector(".d").textContent=m.desc;row.querySelector(".d").style.fontFamily="var(--body)";
+    row.querySelector("input").setAttribute("aria-label","Tampilkan "+m.full);
+    if(!locked){
+      row.querySelector("input").onchange=e=>{S.ind[k].on=e.target.checked;save();rebuild()};
+      row.querySelector(".gear").onclick=()=>{const ex=row.querySelector(".params");if(ex){ex.remove();return}
+        const p=document.createElement("div");p.className="params";
+        m.fields.forEach(([f,lab,mn,mx])=>{const w=document.createElement("div");w.innerHTML=`<label for="p-${k}-${f}"></label><input id="p-${k}-${f}" inputmode="decimal" value="${S.ind[k].p[f]}">`;
+          w.querySelector("label").textContent=lab+" ("+mn+"–"+mx+")";
+          w.querySelector("input").oninput=e=>{const v=parseFloat(e.target.value);if(isFinite(v)&&v>=mn&&v<=mx){S.ind[k].p[f]=v;save();rebuild();row.querySelector("small").textContent=sub()}};
+          p.appendChild(w)});
+        row.appendChild(p)};
+    }
+    host.appendChild(row);
+  };
+  $("free").innerHTML="";$("proList").innerHTML="";
+  FREE.forEach(k=>mk(k,$("free")));PRO.forEach(k=>mk(k,$("proList")));
+  $("cta").hidden=S.pro;
+}
+$("sub").onclick=()=>{$("subNote").hidden=false};
+$("trial").onclick=()=>{S.pro=true;save();lists();rebuild()};
+
+Object.keys(TFS).forEach(tf=>{const b=document.createElement("button");b.className="chip";b.type="button";b.textContent=tf;b.setAttribute("aria-pressed",tf===S.tf);
+  b.onclick=()=>{S.tf=tf;save();document.querySelectorAll("#tfs .chip").forEach(x=>x.setAttribute("aria-pressed",x===b));data=[];load(true)};$("tfs").appendChild(b)});
+
+/* ---------- sumber data ---------- */
+$("srv").value=S.server;
+$("cfg").addEventListener("submit",async e=>{e.preventDefault();S.server=$("srv").value.trim();save();await connect();header();data=[];await load(true);loop()});
+$("useDemo").onclick=async()=>{S.server="";$("srv").value="";save();await connect();if(!DEMO_SYMS.some(x=>x.symbol===S.sel.symbol)){const x=DEMO_SYMS[0];S.sel={src:x.src,symbol:x.symbol,name:x.name,digits:x.digits,desc:x.desc}}header();data=[];await load(true);loop()};
+
+/* ---------- mulai ---------- */
+async function boot(){lists();await connect();header();data=[];await load(true);loop()}
+if(window.LightweightCharts){boot();
+  const re=()=>{if(data.length)rebuild()};
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change",re);
+  new MutationObserver(re).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+}else{$("main").innerHTML='<p style="padding:20px" class="muted">Library chart gagal dimuat. Periksa koneksi lalu muat ulang.</p>'}
+if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+</script>
+
+<script src="install.js"></script>
+</body>
+</html>
