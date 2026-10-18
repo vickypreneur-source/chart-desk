@@ -14,15 +14,15 @@
   var deferred=null;
 
   var css=document.createElement("style");
-  css.textContent=".inst{background:var(--accent);color:var(--surface);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}"+
+  css.textContent=".inst{background:var(--gold);color:var(--gold-ink);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}"+
   ".inst-top{display:flex;justify-content:space-between;align-items:start;gap:10px}"+
   ".inst b{font-family:var(--display);font-size:17px;font-weight:600}"+
   ".inst p{margin:0;font-size:14px;line-height:1.45}"+
   ".inst ol{margin:0;padding-left:20px;font-size:14px;display:flex;flex-direction:column;gap:4px}"+
   ".inst .x{background:none;color:inherit;padding:0 4px;font-size:18px;line-height:1;opacity:.8}"+
   ".inst .acts{display:flex;gap:8px;flex-wrap:wrap}"+
-  ".inst .btn{background:var(--surface);color:var(--accent);border-radius:10px;padding:10px 14px;font-weight:600;text-decoration:none;border:0;font:inherit;font-weight:600;cursor:pointer}"+
-  ".inst .btn.alt{background:transparent;color:var(--surface);border:1px solid currentColor}"+
+  ".inst .btn{background:var(--gold-ink);color:var(--gold);border-radius:10px;padding:10px 14px;font-weight:600;text-decoration:none;border:0;font:inherit;font-weight:600;cursor:pointer}"+
+  ".inst .btn.alt{background:transparent;color:var(--gold-ink);border:1px solid currentColor}"+
   ".inst small{opacity:.85;font-size:12px}";
   document.head.appendChild(css);
 
