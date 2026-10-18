@@ -134,6 +134,10 @@ h2{font-family:var(--display);font-weight:600;font-size:16px;margin:0}
 .stat.go{background:var(--up-soft);color:var(--up)}.stat.stop{background:var(--down-soft);color:var(--down)}.stat.done{background:var(--gold-soft);color:var(--gold)}
 .today{display:flex;flex-wrap:wrap;gap:6px}
 .today span{font-family:var(--mono);font-size:12px;padding:3px 8px;border-radius:6px}
+.rem-grid select{font:inherit;width:100%;min-width:0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.al-item{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.al-item small{color:var(--muted);font-size:12px}
+a.btn{text-decoration:none;display:inline-block}
 .sub-h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;margin:4px 0 0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -197,6 +201,30 @@ h2{font-family:var(--display);font-weight:600;font-size:16px;margin:0}
       <button class="btn" type="button" id="remWin" style="background:var(--up);color:var(--surface)">+ Profit</button>
       <button class="btn" type="button" id="remLoss" style="background:var(--down);color:var(--surface)">− Rugi</button></div>
     <div class="today" id="remToday"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-alert">
+    <div class="pro-head"><h2 id="h-alert">Alert Telegram</h2><span class="live" id="alertTag">Belum terhubung</span></div>
+    <p class="hint" id="alertHint">Dapat pesan di Telegram saat harga menyentuh level atau sinyal berubah arah, tanpa harus membuka chart.</p>
+    <div class="row" id="alertLink">
+      <a class="btn" id="tgLink" href="#" target="_blank" rel="noopener">Hubungkan Telegram</a>
+      <button class="btn ghost" type="button" id="tgCheck">Sudah, cek koneksi</button>
+    </div>
+    <div id="alertForm" hidden style="display:flex;flex-direction:column;gap:10px">
+      <div class="rem-grid">
+        <div><label for="aKind">Jenis alert</label><select id="aKind">
+          <option value="signal">Ringkasan sinyal berubah arah</option>
+          <option value="price_above">Harga naik ke atas…</option>
+          <option value="price_below">Harga turun ke bawah…</option>
+          <option value="adx">ADX Wilder tembus (mulai trend)</option>
+        </select></div>
+        <div id="aValWrap" hidden><label for="aVal" id="aValLbl">Harga</label><input id="aVal" inputmode="decimal"></div>
+      </div>
+      <p class="hint" id="aFor"></p>
+      <div class="row"><button class="btn" type="button" id="aAdd">Buat alert</button><button class="btn ghost" type="button" id="aTest">Kirim pesan tes</button></div>
+      <p class="hint" id="aMsg"></p>
+      <div id="aList"></div>
+    </div>
   </section>
 
   <section class="panel" aria-labelledby="h-ind">
@@ -473,6 +501,41 @@ function remInit(){
   lotCalc();remStatus();
 }
 
+/* ---------- alert telegram ---------- */
+const TG_KEY="chart-desk-tgcode";
+function tgCode(){try{let c=localStorage.getItem(TG_KEY);if(!c){const a="abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";c=Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>a[x%a.length]).join("");localStorage.setItem(TG_KEY,c)}return c}catch(e){return "tmp"+Date.now()}}
+let tgState={linked:false,bot:"",telegram:false},tgPoll=null;
+function aForText(){$("aFor").textContent=`Untuk ${S.sel.name} · ${S.tf}`+($("aKind").value==="signal"?" · dicek setiap candle tutup (DEMA, TEMA, TRIX, ADX)":$("aKind").value==="adx"?" · dicek setiap candle tutup":" · dicek setiap ±10 detik, sekali kirim lalu terhapus")}
+function aKindUI(){const k=$("aKind").value;$("aValWrap").hidden=k==="signal";$("aValLbl").textContent=k==="adx"?"Level ADX":"Harga";
+  if(k.startsWith("price")&&data.length)$("aVal").value=data.at(-1).c.toFixed(S.sel.digits);if(k==="adx")$("aVal").value=25;aForText()}
+$("aKind").onchange=aKindUI;
+async function alertStatus(){
+  if(!live){$("alertTag").className="live";$("alertTag").textContent="Butuh server";$("alertHint").textContent="Alert butuh koneksi ke server data (status Live).";$("alertLink").hidden=true;$("alertForm").hidden=true;return}
+  try{tgState=await api("/api/alerts/status?code="+tgCode())}catch(e){return}
+  if(!tgState.telegram){$("alertTag").className="live err";$("alertTag").textContent="Bot belum aktif";$("alertHint").textContent="Server belum mengaktifkan bot Telegram (file telegram.json di VPS).";$("alertLink").hidden=true;$("alertForm").hidden=true;return}
+  $("tgLink").href=`https://t.me/${tgState.bot}?start=${tgCode()}`;
+  $("alertLink").hidden=tgState.linked;$("alertForm").hidden=!tgState.linked;
+  $("alertTag").className="live"+(tgState.linked?" on":"");$("alertTag").textContent=tgState.linked?"Terhubung":"Belum terhubung";
+  $("alertHint").textContent=tgState.linked?"Alert dikirim ke Telegram-mu. Ketik /daftar di bot untuk melihat semua alert.":"Ketuk Hubungkan Telegram, lalu tekan Start di bot. Setelah itu kembali ke sini.";
+  if(tgState.linked){clearInterval(tgPoll);aKindUI();alertList()}
+}
+async function alertList(){
+  try{const r=await api("/api/alerts/list?code="+tgCode());const L=$("aList");L.innerHTML="";
+    if(!r.alerts.length){L.innerHTML='<p class="hint">Belum ada alert.</p>';return}
+    r.alerts.forEach(a=>{const d=document.createElement("div");d.className="al-item";d.innerHTML='<span></span><button class="link" type="button">Hapus</button><small></small>';
+      d.firstChild.textContent=`${a.name} · ${a.tf}`;d.querySelector("small").textContent=a.label;
+      d.querySelector("button").onclick=async()=>{await api(`/api/alerts/del?code=${tgCode()}&id=${a.id}`).catch(()=>{});alertList()};L.appendChild(d)})}catch(e){}
+}
+$("tgLink").onclick=()=>{clearInterval(tgPoll);let n=0;tgPoll=setInterval(()=>{if(++n>40)clearInterval(tgPoll);alertStatus()},3000)};
+$("tgCheck").onclick=alertStatus;
+$("aAdd").onclick=async()=>{
+  const k=$("aKind").value,q=new URLSearchParams({code:tgCode(),kind:k,src:S.sel.src,symbol:S.sel.symbol,name:S.sel.name,tf:S.tf});
+  if(k!=="signal"){const v=num($("aVal").value);if(!isFinite(v)){$("aVal").focus();return}q.set("value",v)}
+  $("aMsg").textContent="Membuat alert…";
+  try{await api("/api/alerts/add?"+q);$("aMsg").textContent="Alert dibuat. Cek Telegram-mu.";alertList()}catch(e){$("aMsg").textContent="Gagal: "+e.message}
+};
+$("aTest").onclick=async()=>{try{await api("/api/alerts/test?code="+tgCode());$("aMsg").textContent="Pesan tes dikirim ke Telegram."}catch(e){$("aMsg").textContent="Gagal: "+e.message}};
+
 /* ---------- pemuatan data + live ---------- */
 let loadId=0,timer=null;
 async function load(full){
@@ -484,7 +547,7 @@ async function load(full){
   }catch(e){if(live){setTag("err","Gangguan koneksi");}}
 }
 function loop(){clearInterval(timer);timer=setInterval(()=>{if(document.visibilityState==="visible")load(false)},live?2000:3000)}
-function header(){spec=null;sessChip();if($("remBal").value!==""||true)lotCalc();$("symName").textContent=S.sel.name;$("symDesc").textContent=(S.sel.desc||"")+(S.sel.src==="crypto"?" · Binance":S.sel.src==="mt5"?" · MT5":"")}
+function header(){spec=null;sessChip();if(tgState.linked)aKindUI();if($("remBal").value!==""||true)lotCalc();$("symName").textContent=S.sel.name;$("symDesc").textContent=(S.sel.desc||"")+(S.sel.src==="crypto"?" · Binance":S.sel.src==="mt5"?" · MT5":"")}
 async function select(x){S.sel={src:x.src,symbol:x.symbol,name:x.name,digits:x.digits,desc:x.desc};save();header();togglePicker(false);data=[];await load(true)}
 
 /* ---------- watchlist ---------- */
@@ -552,22 +615,22 @@ $("trial").onclick=()=>{if(trialStart())return;try{localStorage.setItem(TRIAL_KE
 let wasPro=null;setInterval(()=>{const now=proActive();if(wasPro!==null&&now!==wasPro){lists();rebuild()}else if(now)lists();wasPro=now},60000);
 
 Object.keys(TFS).forEach(tf=>{const b=document.createElement("button");b.className="chip";b.type="button";b.textContent=tf;b.setAttribute("aria-pressed",tf===S.tf);
-  b.onclick=()=>{S.tf=tf;save();document.querySelectorAll("#tfs .chip:not(#sessBtn)").forEach(x=>x.setAttribute("aria-pressed",x===b));data=[];load(true)};$("tfs").appendChild(b)});
+  b.onclick=()=>{S.tf=tf;save();if(tgState.linked)aKindUI();document.querySelectorAll("#tfs .chip:not(#sessBtn)").forEach(x=>x.setAttribute("aria-pressed",x===b));data=[];load(true)};$("tfs").appendChild(b)});
 
 {const b=document.createElement("button");b.className="chip";b.type="button";b.id="sessBtn";b.textContent="Pita sesi";b.setAttribute("aria-pressed",!!S.showSess);
   b.onclick=()=>{S.showSess=!S.showSess;save();b.setAttribute("aria-pressed",S.showSess);rebuild()};$("tfs").appendChild(b)}
 
 /* ---------- sumber data ---------- */
 $("srv").value=S.server==="demo"?"":S.server;
-$("cfg").addEventListener("submit",async e=>{e.preventDefault();S.server=$("srv").value.trim();save();await connect();header();data=[];await load(true);loop()});
-$("useDemo").onclick=async()=>{S.server="demo";$("srv").value="";save();await connect();if(!DEMO_SYMS.some(x=>x.symbol===S.sel.symbol)){const x=DEMO_SYMS[0];S.sel={src:x.src,symbol:x.symbol,name:x.name,digits:x.digits,desc:x.desc}}header();data=[];await load(true);loop()};
+$("cfg").addEventListener("submit",async e=>{e.preventDefault();S.server=$("srv").value.trim();save();await connect();alertStatus();header();data=[];await load(true);loop()});
+$("useDemo").onclick=async()=>{S.server="demo";$("srv").value="";save();await connect();alertStatus();if(!DEMO_SYMS.some(x=>x.symbol===S.sel.symbol)){const x=DEMO_SYMS[0];S.sel={src:x.src,symbol:x.symbol,name:x.name,digits:x.digits,desc:x.desc}}header();data=[];await load(true);loop()};
 
 /* ---------- panel admin: hanya tampil lewat alamat .../#admin ---------- */
 function adminView(){$("srcPanel").hidden=location.hash!=="#admin"}
 adminView();addEventListener("hashchange",adminView);
 
 /* ---------- mulai ---------- */
-async function boot(){lists();remInit();sessChip();await loadConfig();await connect();header();data=[];await load(true);loop()}
+async function boot(){lists();remInit();sessChip();await loadConfig();await connect();alertStatus();header();data=[];await load(true);loop()}
 if(window.LightweightCharts){boot();
   const re=()=>{if(data.length)rebuild()};
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change",re);
